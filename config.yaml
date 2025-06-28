@@ -1,0 +1,14 @@
+---
+inventory:
+    plugin: SimpleInventory
+    options:
+        host_file: "/home/dansong/fastapi/inventory/hosts.yaml"
+        group_file: "/home/dansong/fastapi/inventory/groups.yaml"
+        defaults_file: "/home/dansong/fastapi/inventory/defaults.yaml"
+
+
+
+runner:
+    plugin: threaded
+    options: 
+        num_workers: 1

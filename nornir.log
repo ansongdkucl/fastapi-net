@@ -1,0 +1,6 @@
+2025-06-27 13:14:05,365 -  nornir.core -     INFO -        run() - Running task 'napalm_get' with args {'getters': ['config']} on 1 hosts
+2025-06-27 13:28:13,213 -  nornir.core -     INFO -        run() - Running task 'napalm_get' with args {'getters': ['config']} on 1 hosts
+2025-06-27 20:05:32,251 -  nornir.core -     INFO -        run() - Running task 'netmiko_send_config' with args {'config_commands': ['interface gi1/0/48', 'switchport access vlan 10', 'description newdes', 'exit']} on 1 hosts
+2025-06-28 09:10:08,970 -  nornir.core -     INFO -        run() - Running task 'napalm_get' with args {'getters': ['config']} on 1 hosts
+2025-06-28 10:24:10,760 -  nornir.core -     INFO -        run() - Running task 'napalm_get' with args {'getters': ['config']} on 1 hosts
+2025-06-28 10:31:08,496 -  nornir.core -     INFO -        run() - Running task 'netmiko_send_config' with args {'config_commands': ['interface gi1/0/48', 'switchport access vlan 88', 'description string', 'exit']} on 1 hosts
