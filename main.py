@@ -5,6 +5,10 @@ from nornir.core.filter import F
 from nornir_napalm.plugins.tasks import napalm_get
 from nornir_netmiko.tasks import netmiko_send_config
 from io import StringIO
+import os
+#os.chdir('/home/dansong/fastapi/inventory')
+#os.chdir('/home/dansong/fastapi')
+
 
 app = FastAPI()
 nr = InitNornir(config_file="config.yaml")
