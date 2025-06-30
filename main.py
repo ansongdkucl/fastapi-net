@@ -5,13 +5,14 @@ from nornir.core.filter import F
 from nornir_napalm.plugins.tasks import napalm_get
 from nornir_netmiko.tasks import netmiko_send_config
 from io import StringIO
-import os
+from fastapi import Query
 #os.chdir('/home/dansong/fastapi/inventory')
 #os.chdir('/home/dansong/fastapi')
 
 
 app = FastAPI()
-nr = InitNornir(config_file="config.yaml")
+#nr = InitNornir(config_file="config.yaml")
+nr = InitNornir(config_file="config1.yaml")
 
 
 def expand_interface(interface: str) -> str:
@@ -102,4 +103,101 @@ def change_vlan(
         "interface": intf_full,
         "vlan": new_vlan,
         "description": description
+    }
+
+
+@app.get("/port-status")
+def port_status(
+    host: str = Query(..., description="Hostname of the device"),
+    interface: str = Query(..., description="Interface to check (e.g., Gi1/0/1)")
+):
+    """
+    GET endpoint to check the status of a specific interface.
+    Returns: host, interface, vlan, mac address, description, and port status (up/down).
+    """
+    try:
+        status = fetch_port_status(host, interface)
+        return status
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
+
+def expand_interface(interface: str) -> str:
+    # Optionally, add mappings for shorthand to full names
+    mapping = {
+        "gi1/0/1": "GigabitEthernet1/0/1",
+        "eth3": "Ethernet3",
+        # Add more as needed
+    }
+    # Normalize input for mapping
+    key = interface.lower()
+    return mapping.get(key, interface)    
+
+@app.get("/port-status")
+def port_status(
+    host: str = Query(..., description="Hostname or IP of the device"),
+    interface: str = Query(..., description="Interface to check (e.g., Gi1/0/48)")
+):
+    """
+    GET endpoint to check the status of a specific interface.
+    Returns: host, interface, vlan, mac address, description, and port status (up/down).
+    """
+    try:
+        status = fetch_port_status(host, interface)
+        return status
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+def fetch_port_status(hostname: str, interface: str):
+    filtered_nr = nr.filter(F(name=hostname) | F(hostname=hostname))
+    if not filtered_nr.inventory.hosts:
+        raise ValueError(f"Host '{hostname}' not found in inventory")
+
+    result = filtered_nr.run(
+        task=napalm_get,
+        getters=["interfaces", "mac_address_table", "vlans"]
+    )
+    task_result = list(result.values())[0]
+    if task_result.failed:
+        raise Exception(f"Failed to get interface details: {task_result.exception}")
+
+    interfaces = task_result.result.get("interfaces", {})
+    mac_table = task_result.result.get("mac_address_table", [])
+    vlans = task_result.result.get("vlans", {})
+
+    intf_full = expand_interface(interface)
+    intf_info = interfaces.get(intf_full)
+    if intf_info is None:
+        raise ValueError(f"Interface '{intf_full}' not found on host '{hostname}'")
+
+    intf_descr = intf_info.get("description", "")
+    is_up = intf_info.get("is_up", False)
+    status = "up" if is_up else "down"
+    mac_address = intf_info.get("mac_address", "")
+
+    # Try MAC address table first
+    vlan = None
+    for entry in mac_table:
+        if entry.get("interface") == intf_full:
+            vlan = entry.get("vlan")
+            break
+
+    # If not found, try to infer from vlans getter
+    if vlan is None:
+        for vlan_id, vlan_info in vlans.items():
+            if 'interfaces' in vlan_info and intf_full in vlan_info['interfaces']:
+                vlan = vlan_id
+                break
+
+    return {
+        "host": hostname,
+        "interface": intf_full,
+        "vlan": vlan,
+        "mac_address": mac_address,
+        "description": intf_descr,
+        "status": status
     }
