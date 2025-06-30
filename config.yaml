@@ -1,11 +1,10 @@
 ---
 inventory:
-    plugin: SimpleInventory
-    options:
-        host_file: "/home/dansong/fastapi/inventory/hosts.yaml"
-        group_file: "/home/dansong/fastapi/inventory/groups.yaml"
-        defaults_file: "/home/dansong/fastapi/inventory/defaults.yaml"
-
+  plugin: SimpleInventory
+  options:
+    host_file: "/app/inventory/hosts.yaml"  # Container path
+    group_file: "/app/inventory/groups.yaml"
+    defaults_file: "/app/inventory/defaults.yaml"
 
 
 runner:
