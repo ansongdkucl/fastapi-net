@@ -6,7 +6,7 @@
       - switches
   data:
       building: 444
-      router: cisco-
+      router: 172.17.1.254
       cab: 9
 
 172.17.57.241:
