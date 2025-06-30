@@ -6,6 +6,7 @@ from nornir_napalm.plugins.tasks import napalm_get
 from nornir_netmiko.tasks import netmiko_send_config
 from io import StringIO
 from fastapi import Query
+import re
 #os.chdir('/home/dansong/fastapi/inventory')
 #os.chdir('/home/dansong/fastapi')
 
@@ -125,15 +126,38 @@ def port_status(
     
 
 def expand_interface(interface: str) -> str:
-    # Optionally, add mappings for shorthand to full names
+    """
+    Expands Cisco short interface names to full names.
+    Examples:
+      Gi1/0/48 -> GigabitEthernet1/0/48
+      Fa0/1    -> FastEthernet0/1
+      Te1/1/1  -> TenGigabitEthernet1/1/1
+      Eth3     -> Ethernet3
+    """
+    interface = interface.strip()
+    # Map short forms to full names
     mapping = {
-        "gi1/0/1": "GigabitEthernet1/0/1",
-        "eth3": "Ethernet3",
-        # Add more as needed
+        'gi': 'GigabitEthernet',
+        'fa': 'FastEthernet',
+        'te': 'TenGigabitEthernet',
+        'fo': 'FortyGigabitEthernet',
+        'hu': 'HundredGigabitEthernet',
+        'eth': 'Ethernet',
+        'lo': 'Loopback',
+        'po': 'Port-channel',
+        'vl': 'Vlan',
+        'se': 'Serial',
+        'tu': 'Tunnel',
     }
-    # Normalize input for mapping
-    key = interface.lower()
-    return mapping.get(key, interface)    
+    # Match the short form at the start, case-insensitive
+    match = re.match(r'^([a-zA-Z]+)([\d\/\.]+)$', interface)
+    if match:
+        prefix, rest = match.groups()
+        prefix = prefix.lower()
+        if prefix in mapping:
+            return f"{mapping[prefix]}{rest}"
+    # If no match, return as-is
+    return interface   
 
 @app.get("/port-status")
 def port_status(
