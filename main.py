@@ -3,9 +3,9 @@ from typing import Optional
 from nornir import InitNornir
 from nornir.core.filter import F
 from nornir_napalm.plugins.tasks import napalm_get
-from nornir_netmiko.tasks import netmiko_send_config
+from nornir_netmiko.tasks import netmiko_send_config, netmiko_send_command
 from io import StringIO
-from fastapi import Query
+from fastapi import Query 
 import re
 #os.chdir('/home/dansong/fastapi/inventory')
 #os.chdir('/home/dansong/fastapi')
@@ -225,3 +225,66 @@ def fetch_port_status(hostname: str, interface: str):
         "description": intf_descr,
         "status": status
     }
+
+@app.get("/find-mac")
+def find_mac(mac: str = Query(..., description="MAC address in xxxx.yyyy.zzzz format")):
+    found = []
+    result = nr.run(
+        task=netmiko_send_command,
+        command_string=f"show mac address-table address {mac}",
+        use_textfsm=True
+    )
+    for host, task_result in result.items():
+        entries = task_result.result
+        # If entries is a string, parsing failed or no result
+        if not entries or isinstance(entries, str):
+            continue
+        for entry in entries:
+            # Defensive: entry should be a dict, skip otherwise
+            if not isinstance(entry, dict):
+                continue
+            interface = entry.get("destination_port")
+            interfaces = interface if isinstance(interface, list) else [interface]
+            skip = False
+            for intf in interfaces:
+                if not intf:
+                    skip = True
+                    break
+                if intf.lower().startswith("po") or intf.lower().startswith("port-channel"):
+                    skip = True
+                    break
+            if skip:
+                continue
+            for intf in interfaces:
+                intf_result = nr.filter(name=host).run(
+                    task=netmiko_send_command,
+                    command_string=f"show interfaces {intf} switchport",
+                    use_textfsm=True
+                )
+                switchport_info = intf_result[host][0].result
+                if isinstance(switchport_info, list) and switchport_info:
+                    switchport_info = switchport_info[0]
+                mode = switchport_info.get("switchport_mode", "").lower()
+                if "trunk" in mode:
+                    skip = True
+                    break
+            if skip:
+                continue
+            for intf in interfaces:
+                found.append({
+                    "switch": host,
+                    "interface": intf,
+                    "vlan": entry.get("vlan"),
+                    "mac_type": entry.get("type"),
+                })
+    if not found:
+        raise HTTPException(status_code=404, detail="MAC address not found on any access port.")
+    return {
+        "host": host,
+        "interface": intf
+    }
+
+
+#uvicorn main:app --reload
+# lsof -i :8000
+# 300a.60a0.324b

@@ -11,7 +11,25 @@ def test_get_config_success():
 def test_change_vlan():
     response = client.post(
         "/change-vlan",
-        data={"host": "172.17.57.240", "interface": "Gi1/0/1", "new_vlan": "100"}
+        data={
+            "host": "172.17.57.240",
+            "interface": "Gi1/0/48",
+            "new_vlan": "10",  # Corrected key,
+            "description": "Test VLAN change"
+        }
     )
     assert response.status_code == 200
-    assert "Successfully changed" in response.json()["message"]
+    json_data = response.json()
+    assert "message" in json_data
+    assert "Successfully changed" in json_data["message"]
+
+
+def test_get_mac_address_success():
+    response = client.get("/find-mac?mac=300a.60a0.324b")    
+    assert response.status_code == 200
+
+
+  
+
+
+
